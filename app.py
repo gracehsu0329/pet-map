@@ -4,9 +4,8 @@ import overpy
 import folium
 import requests
 
-app = Flask(__name__)  # 錯誤修正：name -> __name__
+app = Flask(__name__)
 
-# IP定位備用（未在HTML使用，但可保留）
 def get_location_by_ip():
     try:
         r = requests.get("https://ipinfo.io/json")
@@ -20,7 +19,6 @@ def get_location_by_ip():
     except:
         return None, None, "無法取得位置"
 
-# 查找地點
 def find_places(lat, lon, radius=2000):
     api = overpy.Overpass()
     query = f"""
@@ -35,99 +33,60 @@ def find_places(lat, lon, radius=2000):
     );
     out center;
     """
-    return api.query(query)
+    result = api.query(query)
+    return result.nodes + result.ways + result.relations
 
-# 分類地點
-def categorize_places(nodes, center_lat, center_lon):
+def categorize_places(places):
     categorized = {
         "pet_shops": [],
         "animal_hospitals": [],
         "parks": []
     }
-
-    geolocator = Nominatim(user_agent="webmap")
-
-    def get_lat_lon(n):
-        if hasattr(n, "lat") and hasattr(n, "lon"):
-            return float(n.lat), float(n.lon)
-        elif hasattr(n, "center_lat") and hasattr(n, "center_lon"):
-            return float(n.center_lat), float(n.center_lon)
-        else:
-            return None, None
-
-    def distance(n):
-        lat, lon = get_lat_lon(n)
-        if lat is None or lon is None:
-            return float("inf")
-        return ((lat - float(center_lat)) ** 2 + (lon - float(center_lon)) ** 2) ** 0.5
-
-    sorted_nodes = sorted(nodes, key=distance)
-
-    for node in sorted_nodes:
-        lat, lon = get_lat_lon(node)
-        if lat is None or lon is None:
-            continue
-
-        name = node.tags.get("name", "（未命名）")
-        addr = node.tags.get("addr:full", "")
-        if not addr:
-            try:
-                location = geolocator.reverse((lat, lon), language="zh-TW", timeout=10)
-                addr = location.address if location else ""
-            except:
-                addr = ""
-
-        item = {
-            "name": name,
-            "distance": round(distance(node) * 111000),  # 轉換為公尺
-            "address": addr
-        }
-
-        if "shop" in node.tags and len(categorized["pet_shops"]) < 2:
-            categorized["pet_shops"].append(item)
-        elif "amenity" in node.tags and len(categorized["animal_hospitals"]) < 2:
-            categorized["animal_hospitals"].append(item)
-        elif "leisure" in node.tags and len(categorized["parks"]) < 2:
-            categorized["parks"].append(item)
-
+    for place in places:
+        name = place.tags.get("name", "（未命名）")
+        if "shop" in place.tags and len(categorized["pet_shops"]) < 2:
+            categorized["pet_shops"].append({"name": name})
+        elif "amenity" in place.tags and len(categorized["animal_hospitals"]) < 2:
+            categorized["animal_hospitals"].append({"name": name})
+        elif "leisure" in place.tags and len(categorized["parks"]) < 2:
+            categorized["parks"].append({"name": name})
     return categorized
 
-# 產生地圖
 def generate_map(lat, lon, places, center_name):
     fmap = folium.Map(location=[lat, lon], zoom_start=15)
     folium.Marker([lat, lon], popup=center_name, icon=folium.Icon(color="blue", icon="home")).add_to(fmap)
 
-    for node in places:
-        if hasattr(node, "lat") and hasattr(node, "lon"):
-            lat_, lon_ = node.lat, node.lon
-        elif hasattr(node, "center_lat") and hasattr(node, "center_lon"):
-            lat_, lon_ = node.center_lat, node.center_lon
-        else:
-            continue
+    for place in places:
+        name = place.tags.get("name", "（未命名）")
 
-        name = node.tags.get("name", "（未命名）")
-        if "shop" in node.tags:
+        if "shop" in place.tags:
             label = "寵物店 🐶"
             color = "green"
-        elif "amenity" in node.tags:
+        elif "amenity" in place.tags:
             label = "動物醫院 🏥"
             color = "red"
-        elif "leisure" in node.tags:
+        elif "leisure" in place.tags:
             label = "公園 🌳"
             color = "orange"
         else:
             label = "其他"
             color = "gray"
 
+        if hasattr(place, "lat") and hasattr(place, "lon"):
+            point = [place.lat, place.lon]
+        elif hasattr(place, "center_lat") and hasattr(place, "center_lon"):
+            point = [place.center_lat, place.center_lon]
+        else:
+            continue
+
         folium.Marker(
-            [lat_, lon_],
+            point,
             popup=f"{label}：{name}",
             icon=folium.Icon(color=color)
         ).add_to(fmap)
 
     return fmap._repr_html_()
 
-# 網頁首頁
 @app.route("/", methods=["GET", "POST"])
 def index():
     map_html = ""
@@ -146,9 +105,9 @@ def index():
                 geo = Nominatim(user_agent="webmap")
                 location = geo.reverse(f"{lat}, {lon}", language="zh-TW")
                 address = location.address if location else "未知位置"
-                nodes = find_places(lat, lon)
-                categorized = categorize_places(nodes.nodes + nodes.ways + nodes.relations, lat, lon)
-                map_html = generate_map(lat, lon, nodes.nodes + nodes.ways + nodes.relations, address)
+                places = find_places(lat, lon)
+                categorized = categorize_places(places)
+                map_html = generate_map(lat, lon, places, address)
         elif method == "manual":
             address = request.form.get("address")
             geo = Nominatim(user_agent="webmap")
@@ -157,13 +116,12 @@ def index():
                 error = "❌ 找不到該地址"
             else:
                 lat, lon = loc.latitude, loc.longitude
-                nodes = find_places(lat, lon)
-                categorized = categorize_places(nodes.nodes + nodes.ways + nodes.relations, lat, lon)
-                map_html = generate_map(lat, lon, nodes.nodes + nodes.ways + nodes.relations, address)
+                places = find_places(lat, lon)
+                categorized = categorize_places(places)
+                map_html = generate_map(lat, lon, places, address)
 
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
-# 啟動伺服器
 if __name__ == "__main__":
     from os import environ
     app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))
