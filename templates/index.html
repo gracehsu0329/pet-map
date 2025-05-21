@@ -41,12 +41,12 @@
         {{ map_html|safe }}
     </div>
 
-    {% if places %}
+    {% if categorized %}
     <div class="info">
         <h3>🔍 查詢結果</h3>
-        <p><strong>寵物店：</strong> {{ places.pet|join(", ") or "查無" }}</p>
-        <p><strong>動物醫院：</strong> {{ places.vet|join(", ") or "查無" }}</p>
-        <p><strong>公園：</strong> {{ places.park|join(", ") or "查無" }}</p>
+        <p><strong>🐶 寵物店：</strong> {{ categorized.pet_shops | map(attribute='name') | join(", ") or "查無" }}</p>
+        <p><strong>🏥 動物醫院：</strong> {{ categorized.animal_hospitals | map(attribute='name') | join(", ") or "查無" }}</p>
+        <p><strong>🌳 公園：</strong> {{ categorized.parks | map(attribute='name') | join(", ") or "查無" }}</p>
     </div>
     {% endif %}
 
