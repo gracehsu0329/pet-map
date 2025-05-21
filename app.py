@@ -44,20 +44,36 @@ def categorize_places(nodes, center_lat, center_lon):
 
     geolocator = Nominatim(user_agent="webmap")
 
+    def get_lat_lon(n):
+        if hasattr(n, "lat") and hasattr(n, "lon"):
+            return float(n.lat), float(n.lon)
+        elif hasattr(n, "center_lat") and hasattr(n, "center_lon"):
+            return float(n.center_lat), float(n.center_lon)
+        else:
+            return None, None
+
     def distance(n):
-        return ((float(n.lat) - float(center_lat)) ** 2 + (float(n.lon) - float(center_lon)) ** 2) ** 0.5
+        lat, lon = get_lat_lon(n)
+        if lat is None or lon is None:
+            return float("inf")
+        return ((lat - float(center_lat)) ** 2 + (lon - float(center_lon)) ** 2) ** 0.5
 
     sorted_nodes = sorted(nodes, key=distance)
 
     for node in sorted_nodes:
+        lat, lon = get_lat_lon(node)
+        if lat is None or lon is None:
+            continue
+
         name = node.tags.get("name", "（未命名）")
         addr = node.tags.get("addr:full", "")
         if not addr:
             try:
-                location = geolocator.reverse((node.lat, node.lon), language="zh-TW", timeout=10)
+                location = geolocator.reverse((lat, lon), language="zh-TW", timeout=10)
                 addr = location.address if location else ""
             except:
                 addr = ""
+
         item = {
             "name": name,
             "distance": round(distance(node) * 111000),
