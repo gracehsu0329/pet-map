@@ -33,58 +33,68 @@ def find_places(lat, lon, radius=2000):
     );
     out center;
     """
-    result = api.query(query)
-    return result.nodes + result.ways + result.relations
+    return api.query(query)
 
-def categorize_places(places):
+def categorize_places(nodes, center_lat, center_lon):
     categorized = {
         "pet_shops": [],
         "animal_hospitals": [],
         "parks": []
     }
-    for place in places:
-        name = place.tags.get("name", "（未命名）")
-        if "shop" in place.tags and len(categorized["pet_shops"]) < 2:
-            categorized["pet_shops"].append({"name": name})
-        elif "amenity" in place.tags and len(categorized["animal_hospitals"]) < 2:
-            categorized["animal_hospitals"].append({"name": name})
-        elif "leisure" in place.tags and len(categorized["parks"]) < 2:
-            categorized["parks"].append({"name": name})
+
+    geolocator = Nominatim(user_agent="webmap")
+
+    def distance(n):
+        return ((n.lat - center_lat) ** 2 + (n.lon - center_lon) ** 2) ** 0.5
+
+    sorted_nodes = sorted(nodes, key=distance)
+
+    for node in sorted_nodes:
+        name = node.tags.get("name", "（未命名）")
+        addr = node.tags.get("addr:full", "")
+        if not addr:
+            try:
+                location = geolocator.reverse((node.lat, node.lon), language="zh-TW", timeout=10)
+                addr = location.address if location else ""
+            except:
+                addr = ""
+        item = {
+            "name": name,
+            "distance": round(distance(node) * 111000),
+            "address": addr
+        }
+
+        if "shop" in node.tags and len(categorized["pet_shops"]) < 2:
+            categorized["pet_shops"].append(item)
+        elif "amenity" in node.tags and len(categorized["animal_hospitals"]) < 2:
+            categorized["animal_hospitals"].append(item)
+        elif "leisure" in node.tags and len(categorized["parks"]) < 2:
+            categorized["parks"].append(item)
+
     return categorized
 
 def generate_map(lat, lon, places, center_name):
     fmap = folium.Map(location=[lat, lon], zoom_start=15)
     folium.Marker([lat, lon], popup=center_name, icon=folium.Icon(color="blue", icon="home")).add_to(fmap)
-
-    for place in places:
-        name = place.tags.get("name", "（未命名）")
-
-        if "shop" in place.tags:
+    for node in places:
+        name = node.tags.get("name", "（未命名）")
+        if "shop" in node.tags:
             label = "寵物店 🐶"
             color = "green"
-        elif "amenity" in place.tags:
+        elif "amenity" in node.tags:
             label = "動物醫院 🏥"
             color = "red"
-        elif "leisure" in place.tags:
+        elif "leisure" in node.tags:
             label = "公園 🌳"
             color = "orange"
         else:
             label = "其他"
             color = "gray"
-
-        if hasattr(place, "lat") and hasattr(place, "lon"):
-            point = [place.lat, place.lon]
-        elif hasattr(place, "center_lat") and hasattr(place, "center_lon"):
-            point = [place.center_lat, place.center_lon]
-        else:
-            continue
-
         folium.Marker(
-            point,
+            [node.lat, node.lon],
             popup=f"{label}：{name}",
             icon=folium.Icon(color=color)
         ).add_to(fmap)
-
     return fmap._repr_html_()
 
 @app.route("/", methods=["GET", "POST"])
@@ -105,9 +115,9 @@ def index():
                 geo = Nominatim(user_agent="webmap")
                 location = geo.reverse(f"{lat}, {lon}", language="zh-TW")
                 address = location.address if location else "未知位置"
-                places = find_places(lat, lon)
-                categorized = categorize_places(places)
-                map_html = generate_map(lat, lon, places, address)
+                nodes = find_places(lat, lon)
+                categorized = categorize_places(nodes.nodes + nodes.ways + nodes.relations, lat, lon)
+                map_html = generate_map(lat, lon, nodes.nodes + nodes.ways + nodes.relations, address)
         elif method == "manual":
             address = request.form.get("address")
             geo = Nominatim(user_agent="webmap")
@@ -116,9 +126,9 @@ def index():
                 error = "❌ 找不到該地址"
             else:
                 lat, lon = loc.latitude, loc.longitude
-                places = find_places(lat, lon)
-                categorized = categorize_places(places)
-                map_html = generate_map(lat, lon, places, address)
+                nodes = find_places(lat, lon)
+                categorized = categorize_places(nodes.nodes + nodes.ways + nodes.relations, lat, lon)
+                map_html = generate_map(lat, lon, nodes.nodes + nodes.ways + nodes.relations, address)
 
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
