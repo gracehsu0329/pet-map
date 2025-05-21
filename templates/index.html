@@ -2,28 +2,64 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>寵物地圖查詢</title>
+    <title>附近的寵物店/公園地圖</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        #map {
-            height: 500px;
-            margin-top: 20px;
+        * {
+            box-sizing: border-box;
         }
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
+            margin: 0;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        #container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        #map {
+            height: 500px;
+            flex: 2;
+            min-width: 300px;
         }
         .info {
-            margin-top: 20px;
+            flex: 1;
+            padding-left: 20px;
+            min-width: 250px;
+        }
+        .category-title {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        ul {
+            padding-left: 20px;
+            margin: 5px 0 15px 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        @media (max-width: 768px) {
+            #container {
+                flex-direction: column;
+            }
+            .info {
+                padding-left: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <h2>寵物相關地點查詢</h2>
-
+    <h2>附近的寵物店/公園地圖</h2>
     <form method="POST" id="searchForm">
-        <label><input type="radio" name="method" value="auto" checked> 自動定位</label><br>
+        <label><input type="radio" name="method" value="auto" checked> 自動定位</label>
         <label><input type="radio" name="method" value="manual"> 手動輸入地址：</label>
-        <input type="text" name="address" placeholder="例如：台北市大安區"><br><br>
+        <input type="text" name="address" placeholder="例如：台北市大安區">
         <input type="hidden" name="lat" id="lat">
         <input type="hidden" name="lon" id="lon">
         <button type="submit">開始查詢</button>
@@ -34,21 +70,47 @@
     {% endif %}
 
     {% if address %}
-    <p>查詢位置：{{ address }}</p>
+    <p>顯示位置：{{ address }}</p>
     {% endif %}
 
-    <div id="map">
-        {{ map_html|safe }}
-    </div>
+    <div id="container">
+        <div id="map">
+            {{ map_html|safe }}
+        </div>
+        {% if categorized %}
+        <div class="info">
+            <div class="category-title">🐶 寵物店</div>
+            <ul>
+                {% for item in categorized.pet_shops %}
+                <li>{{ item.name }}</li>
+                {% endfor %}
+                {% if not categorized.pet_shops %}
+                <li>查無資料</li>
+                {% endif %}
+            </ul>
 
-    {% if categorized %}
-    <div class="info">
-        <h3>🔍 查詢結果</h3>
-        <p><strong>🐶 寵物店：</strong> {{ categorized.pet_shops | map(attribute='name') | join(", ") or "查無" }}</p>
-        <p><strong>🏥 動物醫院：</strong> {{ categorized.animal_hospitals | map(attribute='name') | join(", ") or "查無" }}</p>
-        <p><strong>🌳 公園：</strong> {{ categorized.parks | map(attribute='name') | join(", ") or "查無" }}</p>
+            <div class="category-title">🏥 動物醫院</div>
+            <ul>
+                {% for item in categorized.animal_hospitals %}
+                <li>{{ item.name }}</li>
+                {% endfor %}
+                {% if not categorized.animal_hospitals %}
+                <li>查無資料</li>
+                {% endif %}
+            </ul>
+
+            <div class="category-title">🌳 公園</div>
+            <ul>
+                {% for item in categorized.parks %}
+                <li>{{ item.name }}</li>
+                {% endfor %}
+                {% if not categorized.parks %}
+                <li>查無資料</li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 
 <script>
     const form = document.getElementById("searchForm");
