@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>附近的寵物地圖</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-pMpr3cGehGfX9tm+t6zK4FDHG2CMslrU+Y2G5QkTy+0="
+    crossorigin=""
+  />
+  <style>
+    #map {
+      height: 500px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    button {
+      padding: 8px 14px;
+      font-size: 16px;
+    }
+    .info {
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📍 查詢附近的寵物店、動物醫院、公園</h2>
+  <button onclick="locate()">使用目前位置查詢</button>
+  <div id="map"></div>
+  <div class="info" id="info"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7kGkG2JHHy6HgFpFp5o+J6HXIjqEQdJWm+9EOg="
+    crossorigin="">
+  </script>
+
+  <script>
+    let map;
+
+    function locate() {
+      if (!navigator.geolocation) {
+        alert("瀏覽器不支援定位功能");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(success, error);
+    }
+
+    function success(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      if (map) {
+        map.remove();
+      }
+
+      map = L.map("map").setView([lat, lon], 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19
+      }).addTo(map);
+
+      L.marker([lat, lon]).addTo(map)
+        .bindPopup("你在這裡")
+        .openPopup();
+
+      fetchOverpass(lat, lon);
+    }
+
+    function error() {
+      alert("❌ 定位失敗，請確認允許位置存取");
+    }
+
+    function fetchOverpass(lat, lon) {
+      const radius = 2000; // 公尺
+      const query = `
+        [out:json];
+        (
+          node["shop"="pet"](around:${radius},${lat},${lon});
+          node["amenity"="veterinary"](around:${radius},${lat},${lon});
+          node["leisure"="park"](around:${radius},${lat},${lon});
+        );
+        out center;
+      `;
+
+      fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: query
+      })
+        .then(response => response.json())
+        .then(data => {
+          const info = document.getElementById("info");
+          info.innerHTML = "";
+          if (!data.elements || data.elements.length === 0) {
+            info.textContent = "找不到附近的寵物地點";
+            return;
+          }
+
+          const categories = { pet: [], vet: [], park: [] };
+
+          data.elements.forEach(e => {
+            const name = e.tags.name || "（未命名）";
+            const coord = [e.lat, e.lon];
+            let label = "";
+            let color = "blue";
+
+            if (e.tags.shop === "pet") {
+              label = "🐶 寵物店";
+              color = "green";
+              categories.pet.push(name);
+            } else if (e.tags.amenity === "veterinary") {
+              label = "🏥 動物醫院";
+              color = "red";
+              categories.vet.push(name);
+            } else if (e.tags.leisure === "park") {
+              label = "🌳 公園";
+              color = "orange";
+              categories.park.push(name);
+            }
+
+            L.marker(coord, {
+              icon: L.icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+                shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png",
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              })
+            })
+              .addTo(map)
+              .bindPopup(`${label}：${name}`);
+          });
+
+          info.innerHTML = `
+            <h3>🔍 查詢結果</h3>
+            <p><strong>寵物店：</strong> ${categories.pet.join(", ") || "查無"}</p>
+            <p><strong>動物醫院：</strong> ${categories.vet.join(", ") || "查無"}</p>
+            <p><strong>公園：</strong> ${categories.park.join(", ") || "查無"}</p>
+          `;
+        })
+        .catch(err => {
+          console.error(err);
+          alert("❌ 查詢失敗，請稍後再試");
+        });
+    }
+  </script>
+</body>
+</html>
