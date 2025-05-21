@@ -4,8 +4,9 @@ import overpy
 import folium
 import requests
 
-app = Flask(__name__)
+app = Flask(__name__)  # 錯誤修正：name -> __name__
 
+# IP定位備用（未在HTML使用，但可保留）
 def get_location_by_ip():
     try:
         r = requests.get("https://ipinfo.io/json")
@@ -19,6 +20,7 @@ def get_location_by_ip():
     except:
         return None, None, "無法取得位置"
 
+# 查找地點
 def find_places(lat, lon, radius=2000):
     api = overpy.Overpass()
     query = f"""
@@ -35,6 +37,7 @@ def find_places(lat, lon, radius=2000):
     """
     return api.query(query)
 
+# 分類地點
 def categorize_places(nodes, center_lat, center_lon):
     categorized = {
         "pet_shops": [],
@@ -76,7 +79,7 @@ def categorize_places(nodes, center_lat, center_lon):
 
         item = {
             "name": name,
-            "distance": round(distance(node) * 111000),
+            "distance": round(distance(node) * 111000),  # 轉換為公尺
             "address": addr
         }
 
@@ -89,10 +92,19 @@ def categorize_places(nodes, center_lat, center_lon):
 
     return categorized
 
+# 產生地圖
 def generate_map(lat, lon, places, center_name):
     fmap = folium.Map(location=[lat, lon], zoom_start=15)
     folium.Marker([lat, lon], popup=center_name, icon=folium.Icon(color="blue", icon="home")).add_to(fmap)
+
     for node in places:
+        if hasattr(node, "lat") and hasattr(node, "lon"):
+            lat_, lon_ = node.lat, node.lon
+        elif hasattr(node, "center_lat") and hasattr(node, "center_lon"):
+            lat_, lon_ = node.center_lat, node.center_lon
+        else:
+            continue
+
         name = node.tags.get("name", "（未命名）")
         if "shop" in node.tags:
             label = "寵物店 🐶"
@@ -106,13 +118,16 @@ def generate_map(lat, lon, places, center_name):
         else:
             label = "其他"
             color = "gray"
+
         folium.Marker(
-            [node.lat, node.lon],
+            [lat_, lon_],
             popup=f"{label}：{name}",
             icon=folium.Icon(color=color)
         ).add_to(fmap)
+
     return fmap._repr_html_()
 
+# 網頁首頁
 @app.route("/", methods=["GET", "POST"])
 def index():
     map_html = ""
@@ -148,6 +163,7 @@ def index():
 
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
+# 啟動伺服器
 if __name__ == "__main__":
     from os import environ
     app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))
