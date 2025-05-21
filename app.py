@@ -45,7 +45,7 @@ def categorize_places(nodes, center_lat, center_lon):
     geolocator = Nominatim(user_agent="webmap")
 
     def distance(n):
-        return ((n.lat - center_lat) ** 2 + (n.lon - center_lon) ** 2) ** 0.5
+        return ((float(n.lat) - float(center_lat)) ** 2 + (float(n.lon) - float(center_lon)) ** 2) ** 0.5
 
     sorted_nodes = sorted(nodes, key=distance)
 
