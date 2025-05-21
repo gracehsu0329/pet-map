@@ -3,6 +3,7 @@ from geopy.geocoders import Nominatim
 import overpy
 import folium
 import requests
+from geopy.distance import geodesic
 
 app = Flask(__name__)
 
@@ -36,20 +37,42 @@ def find_places(lat, lon, radius=2000):
     result = api.query(query)
     return result.nodes + result.ways + result.relations
 
-def categorize_places(places):
+def categorize_places(places, user_lat, user_lon):
     categorized = {
         "pet_shops": [],
         "animal_hospitals": [],
         "parks": []
     }
+
     for place in places:
         name = place.tags.get("name", "（未命名）")
-        if "shop" in place.tags and len(categorized["pet_shops"]) < 2:
-            categorized["pet_shops"].append({"name": name})
-        elif "amenity" in place.tags and len(categorized["animal_hospitals"]) < 2:
-            categorized["animal_hospitals"].append({"name": name})
-        elif "leisure" in place.tags and len(categorized["parks"]) < 2:
-            categorized["parks"].append({"name": name})
+        address = place.tags.get("addr:full", "")  # or leave blank
+        if hasattr(place, "lat") and hasattr(place, "lon"):
+            lat, lon = place.lat, place.lon
+        elif hasattr(place, "center_lat") and hasattr(place, "center_lon"):
+            lat, lon = place.center_lat, place.center_lon
+        else:
+            continue
+
+        dist = round(geodesic((user_lat, user_lon), (lat, lon)).meters)
+
+        info = {
+            "name": name,
+            "distance": dist,
+            "address": address,
+        }
+
+        if "shop" in place.tags:
+            categorized["pet_shops"].append(info)
+        elif "amenity" in place.tags:
+            categorized["animal_hospitals"].append(info)
+        elif "leisure" in place.tags:
+            categorized["parks"].append(info)
+
+    # 依距離排序，只取前兩筆
+    for key in categorized:
+        categorized[key] = sorted(categorized[key], key=lambda x: x["distance"])[:2]
+
     return categorized
 
 def generate_map(lat, lon, places, center_name):
@@ -106,7 +129,7 @@ def index():
                 location = geo.reverse(f"{lat}, {lon}", language="zh-TW")
                 address = location.address if location else "未知位置"
                 places = find_places(lat, lon)
-                categorized = categorize_places(places)
+                categorized = categorize_places(places, lat, lon)  # 加上 lat 和 lon
                 map_html = generate_map(lat, lon, places, address)
         elif method == "manual":
             address = request.form.get("address")
@@ -117,8 +140,18 @@ def index():
             else:
                 lat, lon = loc.latitude, loc.longitude
                 places = find_places(lat, lon)
-                categorized = categorize_places(places)
+                categorized = categorize_places(places, lat, lon)
                 map_html = generate_map(lat, lon, places, address)
+    
+    
+    else:  # ✅ GET: 嘗試 IP 定位
+        lat, lon, address = get_location_by_ip()
+        if lat and lon:
+            places = find_places(lat, lon)
+            categorized = categorize_places(places, lat, lon)
+            map_html = generate_map(lat, lon, places, address)
+        else:
+            error = "❌ 無法透過 IP 取得位置"
 
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
