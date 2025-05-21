@@ -24,12 +24,16 @@ def find_places(lat, lon, radius=2000):
     query = f"""
     (
       node["shop"="pet"](around:{radius},{lat},{lon});
+      way["shop"="pet"](around:{radius},{lat},{lon});
       node["amenity"="veterinary"](around:{radius},{lat},{lon});
+      way["amenity"="veterinary"](around:{radius},{lat},{lon});
       node["leisure"="park"](around:{radius},{lat},{lon});
+      way["leisure"="park"](around:{radius},{lat},{lon});
+      relation["leisure"="park"](around:{radius},{lat},{lon});
     );
-    out body;
+    out center;
     """
-    return api.query(query).nodes
+    return api.query(query)
 
 def categorize_places(nodes):
     categorized = {
