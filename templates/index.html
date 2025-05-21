@@ -74,42 +74,57 @@
     {% endif %}
 
     <div id="container">
-        <div id="map">
-            {{ map_html|safe }}
-        </div>
-        {% if categorized %}
-        <div class="info">
-            <div class="category-title">🐶 寵物店</div>
-            <ul>
-                {% for item in categorized.pet_shops %}
-                <li>{{ item.name }}</li>
-                {% endfor %}
-                {% if not categorized.pet_shops %}
-                <li>查無資料</li>
+    <div id="map">
+        {{ map_html|safe }}
+    </div>
+    {% if categorized %}
+    <div class="info">
+        <div class="category-title">🐶 寵物店</div>
+        <ul>
+            {% for item in categorized.pet_shops %}
+            <li>
+                {{ item.name }}（{{ item.distance }} 公尺）
+                {% if item.address %}
+                <br><small>{{ item.address }}</small>
                 {% endif %}
-            </ul>
+            </li>
+            {% endfor %}
+            {% if not categorized.pet_shops %}
+            <li>查無資料</li>
+            {% endif %}
+        </ul>
 
-            <div class="category-title">🏥 動物醫院</div>
-            <ul>
-                {% for item in categorized.animal_hospitals %}
-                <li>{{ item.name }}</li>
-                {% endfor %}
-                {% if not categorized.animal_hospitals %}
-                <li>查無資料</li>
+        <div class="category-title">🏥 動物醫院</div>
+        <ul>
+            {% for item in categorized.animal_hospitals %}
+            <li>
+                {{ item.name }}（{{ item.distance }} 公尺）
+                {% if item.address %}
+                <br><small>{{ item.address }}</small>
                 {% endif %}
-            </ul>
+            </li>
+            {% endfor %}
+            {% if not categorized.animal_hospitals %}
+            <li>查無資料</li>
+            {% endif %}
+        </ul>
 
-            <div class="category-title">🌳 公園</div>
-            <ul>
-                {% for item in categorized.parks %}
-                <li>{{ item.name }}</li>
-                {% endfor %}
-                {% if not categorized.parks %}
-                <li>查無資料</li>
+        <div class="category-title">🌳 公園</div>
+        <ul>
+            {% for item in categorized.parks %}
+            <li>
+                {{ item.name }}（{{ item.distance }} 公尺）
+                {% if item.address %}
+                <br><small>{{ item.address }}</small>
                 {% endif %}
-            </ul>
-        </div>
-        {% endif %}
+            </li>
+            {% endfor %}
+            {% if not categorized.parks %}
+            <li>查無資料</li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
     </div>
 
 <script>
