@@ -142,16 +142,6 @@ def index():
                 places = find_places(lat, lon)
                 categorized = categorize_places(places, lat, lon)
                 map_html = generate_map(lat, lon, places, address)
-    
-    
-    else:  # ✅ GET: 嘗試 IP 定位
-        lat, lon, address = get_location_by_ip()
-        if lat and lon:
-            places = find_places(lat, lon)
-            categorized = categorize_places(places, lat, lon)
-            map_html = generate_map(lat, lon, places, address)
-        else:
-            error = "❌ 無法透過 IP 取得位置"
 
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
