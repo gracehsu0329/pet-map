@@ -3,6 +3,19 @@
 <head>
     <meta charset="UTF-8" />
     <title>寵物地圖查詢</title>
+    <style>
+        #map {
+            height: 500px;
+            margin-top: 20px;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .info {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <h2>寵物相關地點查詢</h2>
@@ -28,6 +41,15 @@
         {{ map_html|safe }}
     </div>
 
+    {% if places %}
+    <div class="info">
+        <h3>🔍 查詢結果</h3>
+        <p><strong>寵物店：</strong> {{ places.pet|join(", ") or "查無" }}</p>
+        <p><strong>動物醫院：</strong> {{ places.vet|join(", ") or "查無" }}</p>
+        <p><strong>公園：</strong> {{ places.park|join(", ") or "查無" }}</p>
+    </div>
+    {% endif %}
+
 <script>
     const form = document.getElementById("searchForm");
     const autoRadio = document.querySelector('input[value="auto"]');
@@ -35,20 +57,15 @@
     const latInput = document.getElementById("lat");
     const lonInput = document.getElementById("lon");
     const btn = form.querySelector("button");
-    const addressInput = form.querySelector('input[name="address"]');
 
-    // 切換搜尋方式時清空經緯度，避免誤用
     autoRadio.addEventListener("change", () => {
-        if (autoRadio.checked) {
-            latInput.value = "";
-            lonInput.value = "";
-        }
+        latInput.value = "";
+        lonInput.value = "";
     });
+
     manualRadio.addEventListener("change", () => {
-        if (manualRadio.checked) {
-            latInput.value = "";
-            lonInput.value = "";
-        }
+        latInput.value = "";
+        lonInput.value = "";
     });
 
     form.addEventListener("submit", function (e) {
@@ -65,8 +82,8 @@
             navigator.geolocation.getCurrentPosition(function (position) {
                 latInput.value = position.coords.latitude;
                 lonInput.value = position.coords.longitude;
-                btn.textContent = "開始查詢";
                 btn.disabled = false;
+                btn.textContent = "開始查詢";
                 form.submit();
             }, function () {
                 alert("❌ 定位失敗，請確認你已允許位置存取");
