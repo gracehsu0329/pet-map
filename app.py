@@ -4,7 +4,7 @@ import overpy
 import folium
 import requests
 
-app = Flask(__name__)  # 錯誤修正：name → __name__
+app = Flask(__name__)
 
 def get_location_by_ip():
     try:
@@ -40,27 +40,26 @@ def categorize_places(nodes):
     for node in nodes:
         name = node.tags.get("name", "（未命名）")
         if "shop" in node.tags and len(categorized["pet_shops"]) < 2:
-            categorized["pet_shops"].append({"name": "🐶 " + name})
+            categorized["pet_shops"].append({"name": name})
         elif "amenity" in node.tags and len(categorized["animal_hospitals"]) < 2:
-            categorized["animal_hospitals"].append({"name": "🏥 " + name})
+            categorized["animal_hospitals"].append({"name": name})
         elif "leisure" in node.tags and len(categorized["parks"]) < 2:
-            categorized["parks"].append({"name": "🌳 " + name})
+            categorized["parks"].append({"name": name})
     return categorized
 
-def generate_map(lat, lon, nodes, center_name):
+def generate_map(lat, lon, places, center_name):
     fmap = folium.Map(location=[lat, lon], zoom_start=15)
     folium.Marker([lat, lon], popup=center_name, icon=folium.Icon(color="blue", icon="home")).add_to(fmap)
-
-    for node in nodes:
+    for node in places:
         name = node.tags.get("name", "（未命名）")
         if "shop" in node.tags:
-            label = "🐶 寵物店"
+            label = "寵物店 🐶"
             color = "green"
         elif "amenity" in node.tags:
-            label = "🏥 動物醫院"
+            label = "動物醫院 🏥"
             color = "red"
         elif "leisure" in node.tags:
-            label = "🌳 公園"
+            label = "公園 🌳"
             color = "orange"
         else:
             label = "其他"
@@ -82,10 +81,14 @@ def index():
     if request.method == "POST":
         method = request.form.get("method")
         if method == "auto":
-            lat, lon, address = get_location_by_ip()
+            lat = request.form.get("lat", type=float)
+            lon = request.form.get("lon", type=float)
             if not lat or not lon:
-                error = "❌ 無法取得自動定位"
+                error = "❌ 無法取得定位"
             else:
+                geo = Nominatim(user_agent="webmap")
+                location = geo.reverse(f"{lat}, {lon}", language="zh-TW")
+                address = location.address if location else "未知位置"
                 nodes = find_places(lat, lon)
                 categorized = categorize_places(nodes)
                 map_html = generate_map(lat, lon, nodes, address)
@@ -101,26 +104,6 @@ def index():
                 categorized = categorize_places(nodes)
                 map_html = generate_map(lat, lon, nodes, address)
 
-    return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
-
-@app.route("/auto")
-def auto_location():
-    lat = request.args.get("lat", type=float)
-    lon = request.args.get("lng", type=float)
-    address = ""
-    error = ""
-    categorized = {"pet_shops": [], "animal_hospitals": [], "parks": []}
-
-    if not lat or not lon:
-        error = "❌ 無法取得你的定位"
-        return render_template("index.html", map_html="", address="", error=error, categorized=categorized)
-
-    geo = Nominatim(user_agent="webmap")
-    location = geo.reverse(f"{lat}, {lon}", language="zh-TW")
-    address = location.address if location else "未知位置"
-    nodes = find_places(lat, lon)
-    categorized = categorize_places(nodes)
-    map_html = generate_map(lat, lon, nodes, address)
     return render_template("index.html", map_html=map_html, address=address, error=error, categorized=categorized)
 
 if __name__ == "__main__":
