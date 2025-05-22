@@ -13,7 +13,6 @@ def get_location_by_ip():
         r = requests.get("https://ipinfo.io/json", timeout=1.5)
         data = r.json()
         lat, lon = map(float, data["loc"].split(","))
-        # 只 reverse 一次，這樣就不會變慢了
         geolocator = Nominatim(user_agent="webmap")
         location = geolocator.reverse((lat, lon), language="zh-TW", timeout=2)
         address = location.address if location else "未知位置"
@@ -128,7 +127,18 @@ def index():
         method = request.form.get("method")
 
         if method == "auto":
-            lat, lon, address = get_location_by_ip()
+            lat = request.form.get("lat", type=float)
+            lon = request.form.get("lon", type=float)
+
+            if lat is None or lon is None:
+                # 使用者未允許定位 → fallback 到 IP
+                lat, lon, address = get_location_by_ip()
+            else:
+                # 使用者允許裝置定位 → 使用 GPS + 反查地址
+                geolocator = Nominatim(user_agent="webmap")
+                location = geolocator.reverse((lat, lon), language="zh-TW", timeout=2)
+                address = location.address if location else "未知位置"
+
             if not lat or not lon:
                 error = "❌ 無法取得定位"
             else:
