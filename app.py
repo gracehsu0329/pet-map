@@ -12,11 +12,12 @@ def get_location_by_ip():
     try:
         r = requests.get("https://ipinfo.io/json", timeout=1.5)
         data = r.json()
-        lat, lon = map(float, data["loc"].split(","))
+        loc = data["loc"]
+        lat, lon = map(float, loc.split(","))
         geolocator = Nominatim(user_agent="webmap")
-        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
-        address = location.address if location else "未知位置"
-        return lat, lon, address
+        location = geolocator.reverse(f"{lat}, {lon}", language="zh-TW", timeout=3)
+        full_address = location.address if location else "未知位置"
+        return lat, lon, full_address
     except:
         return None, None, "無法取得位置"
 
