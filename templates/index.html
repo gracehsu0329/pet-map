@@ -1,61 +1,30 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8" />
-    <title>附近的寵物店/公園地圖</title>
+    <title>寵物周邊地圖</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            margin: 0;
-        }
-        h2 {
-            margin-top: 0;
-        }
-        form {
-            margin-bottom: 20px;
-        }
-        #container {
-            display: flex;
-            flex-wrap: wrap;
-        }
-        #map {
-            height: 500px;
-            flex: 2;
-            min-width: 300px;
-        }
-        .info {
-            flex: 1;
-            padding-left: 20px;
-            min-width: 250px;
-        }
-        .category-title {
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        ul {
-            padding-left: 20px;
-            margin: 5px 0 15px 0;
-        }
-        li {
-            margin-bottom: 5px;
-        }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+        h2 { margin-top: 0; }
+        form { margin-bottom: 20px; }
+        #container { display: flex; flex-wrap: wrap; }
+        #map { height: 500px; flex: 2; min-width: 300px; }
+        .info { flex: 1; padding-left: 20px; min-width: 250px; }
+        .category-title { font-weight: bold; margin-top: 10px; }
+        ul { padding-left: 20px; margin: 5px 0 15px 0; }
+        li { margin-bottom: 5px; }
         @media (max-width: 768px) {
-            #container {
-                flex-direction: column;
-            }
-            .info {
-                padding-left: 0;
-            }
+            #container { flex-direction: column; }
+            .info { padding-left: 0; }
         }
     </style>
 </head>
+
 <body>
-    <h2>附近的寵物店/公園地圖</h2>
+    <h2>寵物周邊地圖</h2>
     <form method="POST" id="searchForm">
         <label><input type="radio" name="method" value="auto" checked> 自動定位</label>
         <label><input type="radio" name="method" value="manual"> 手動輸入地址：</label>
@@ -74,101 +43,103 @@
     {% endif %}
 
     <div id="container">
-    <div id="map">
-        {{ map_html|safe }}
-    </div>
-    {% if categorized %}
-    <div class="info">
-        <div class="category-title">🐶 寵物店</div>
-        <ul>
-            {% for item in categorized.pet_shops %}
-            <li>
-                {{ item.name }}（{{ item.distance }} 公尺）
-                {% if item.address %}
-                <br><small>{{ item.address }}</small>
+        <div id="map">{{ map_html|safe }}</div>
+        {% if categorized %}
+        <div class="info">
+            <div class="category-title">🐶 寵物店</div>
+            <ul>
+                {% for item in categorized.pet_shops %}
+                <li>
+                    {{ item.name }}（{{ item.distance }} 公尺）
+                    {% if item.address %}<br><small>{{ item.address }}</small>{% endif %}
+                </li>
+                {% endfor %}
+                {% if not categorized.pet_shops %}
+                <li>查無資料</li>
                 {% endif %}
-            </li>
-            {% endfor %}
-            {% if not categorized.pet_shops %}
-            <li>查無資料</li>
-            {% endif %}
-        </ul>
+            </ul>
 
-        <div class="category-title">🏥 動物醫院</div>
-        <ul>
-            {% for item in categorized.animal_hospitals %}
-            <li>
-                {{ item.name }}（{{ item.distance }} 公尺）
-                {% if item.address %}
-                <br><small>{{ item.address }}</small>
+            <div class="category-title">🏥 動物醫院</div>
+            <ul>
+                {% for item in categorized.animal_hospitals %}
+                <li>
+                    {{ item.name }}（{{ item.distance }} 公尺）
+                    {% if item.address %}<br><small>{{ item.address }}</small>{% endif %}
+                </li>
+                {% endfor %}
+                {% if not categorized.animal_hospitals %}
+                <li>查無資料</li>
                 {% endif %}
-            </li>
-            {% endfor %}
-            {% if not categorized.animal_hospitals %}
-            <li>查無資料</li>
-            {% endif %}
-        </ul>
+            </ul>
 
-        <div class="category-title">🌳 公園</div>
-        <ul>
-            {% for item in categorized.parks %}
-            <li>
-                {{ item.name }}（{{ item.distance }} 公尺）
-                {% if item.address %}
-                <br><small>{{ item.address }}</small>
+            <div class="category-title">🌳 公園</div>
+            <ul>
+                {% for item in categorized.parks %}
+                <li>
+                    {{ item.name }}（{{ item.distance }} 公尺）
+                    {% if item.address %}<br><small>{{ item.address }}</small>{% endif %}
+                </li>
+                {% endfor %}
+                {% if not categorized.parks %}
+                <li>查無資料</li>
                 {% endif %}
-            </li>
-            {% endfor %}
-            {% if not categorized.parks %}
-            <li>查無資料</li>
-            {% endif %}
-        </ul>
-    </div>
-    {% endif %}
+            </ul>
+        </div>
+        {% endif %}
     </div>
 
-<script>
-    const form = document.getElementById("searchForm");
-    const autoRadio = document.querySelector('input[value="auto"]');
-    const manualRadio = document.querySelector('input[value="manual"]');
-    const latInput = document.getElementById("lat");
-    const lonInput = document.getElementById("lon");
-    const btn = form.querySelector("button");
+    <script>
+        const form = document.getElementById("searchForm");
+        const autoRadio = document.querySelector('input[value="auto"]');
+        const manualRadio = document.querySelector('input[value="manual"]');
+        const latInput = document.getElementById("lat");
+        const lonInput = document.getElementById("lon");
+        const btn = form.querySelector("button");
 
-    autoRadio.addEventListener("change", () => {
-        latInput.value = "";
-        lonInput.value = "";
-    });
+        // 自動清空座標
+        autoRadio.addEventListener("change", () => {
+            latInput.value = "";
+            lonInput.value = "";
+        });
+        manualRadio.addEventListener("change", () => {
+            latInput.value = "";
+            lonInput.value = "";
+        });
 
-    manualRadio.addEventListener("change", () => {
-        latInput.value = "";
-        lonInput.value = "";
-    });
-
-    form.addEventListener("submit", function (e) {
-        if (autoRadio.checked) {
-            e.preventDefault();
-            btn.disabled = true;
-            btn.textContent = "📡 取得位置中...";
-            if (!navigator.geolocation) {
-                alert("❌ 瀏覽器不支援定位功能");
-                btn.disabled = false;
-                btn.textContent = "開始查詢";
-                return;
+        // 預抓定位：頁面一開就抓
+        window.addEventListener("DOMContentLoaded", () => {
+            if (autoRadio.checked && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    latInput.value = position.coords.latitude;
+                    lonInput.value = position.coords.longitude;
+                });
             }
-            navigator.geolocation.getCurrentPosition(function (position) {
-                latInput.value = position.coords.latitude;
-                lonInput.value = position.coords.longitude;
-                btn.disabled = false;
-                btn.textContent = "開始查詢";
-                form.submit();
-            }, function () {
-                alert("❌ 定位失敗，請確認你已允許位置存取");
-                btn.disabled = false;
-                btn.textContent = "開始查詢";
-            });
-        }
-    });
-</script>
+        });
+
+        form.addEventListener("submit", function (e) {
+            if (autoRadio.checked) {
+                e.preventDefault();
+                btn.disabled = true;
+                btn.textContent = "📡 取得位置中...";
+                if (!navigator.geolocation) {
+                    alert("❌ 瀏覽器不支援定位功能");
+                    btn.disabled = false;
+                    btn.textContent = "開始查詢";
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    latInput.value = position.coords.latitude;
+                    lonInput.value = position.coords.longitude;
+                    btn.disabled = false;
+                    btn.textContent = "開始查詢";
+                    form.submit();
+                }, function () {
+                    alert("❌ 定位失敗，請確認你已允許位置存取");
+                    btn.disabled = false;
+                    btn.textContent = "開始查詢";
+                });
+            }
+        });
+    </script>
 </body>
 </html>
