@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 def get_location_by_ip():
     try:
-        r = requests.get("https://ipinfo.io/json", timeout=2)
+        r = requests.get("https://ipinfo.io/json", timeout=1.5)
         data = r.json()
         lat, lon = map(float, data["loc"].split(","))
         geolocator = Nominatim(user_agent="webmap")
