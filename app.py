@@ -10,14 +10,13 @@ app = Flask(__name__)
 
 def get_location_by_ip():
     try:
-        r = requests.get("https://ipinfo.io/json", timeout=1.5)
+        r = requests.get("https://ipinfo.io/json", timeout=2)
         data = r.json()
-        loc = data["loc"]
-        lat, lon = map(float, loc.split(","))
+        lat, lon = map(float, data["loc"].split(","))
         geolocator = Nominatim(user_agent="webmap")
-        location = geolocator.reverse(f"{lat}, {lon}", language="zh-TW", timeout=3)
-        full_address = location.address if location else "未知位置"
-        return lat, lon, full_address
+        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
+        address = location.address if location else "未知位置"
+        return lat, lon, address
     except:
         return None, None, "無法取得位置"
 
