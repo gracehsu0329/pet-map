@@ -9,18 +9,18 @@ from geopy.distance import geodesic
 app = Flask(__name__)
 
 def get_location_by_ip():
-    try:
-        r = requests.get("http://ip-api.com/json/", timeout=2)
-        data = r.json()
-        lat, lon = data["lat"], data["lon"]
-        geolocator = Nominatim(user_agent="webmap")
-        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
-        address = location.address if location else "未知位置"
-        return lat, lon, address
-    except:
-        return None, None, "無法取得位置"
-
-
+    try:
+        r = requests.get("http://ip-api.com/json", timeout=2)
+        data = r.json()
+        lat = data["lat"]
+        lon = data["lon"]
+        geolocator = Nominatim(user_agent="webmap")
+        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
+        address = location.address if location else "未知位置"
+        return lat, lon, address
+    except:
+        return None, None, "無法取得位置"
+        
 def find_places(lat, lon, radius=2000, retries=2):
     api = overpy.Overpass()
     query = f"""
