@@ -10,11 +10,11 @@ app = Flask(__name__)
 
 def get_location_by_ip():
     try:
-        r = requests.get("https://ipinfo.io/json", timeout=1.5)
+        r = requests.get("https://ipinfo.io/json", timeout=2)
         data = r.json()
         lat, lon = map(float, data["loc"].split(","))
         geolocator = Nominatim(user_agent="webmap")
-        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=2)
+        location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
         address = location.address if location else "未知位置"
         return lat, lon, address
     except:
@@ -38,10 +38,11 @@ def find_places(lat, lon, radius=2000, retries=2):
         try:
             result = api.query(query)
             return result.nodes + result.ways + result.relations
-        except:
+        except Exception:
             if attempt < retries - 1:
                 time.sleep(1)
-    return []
+            else:
+                return []
 
 def categorize_places(places, user_lat, user_lon):
     categorized = {
@@ -87,7 +88,6 @@ def generate_map(lat, lon, places, center_name):
 
     for place in places:
         name = place.tags.get("name", "（未命名）")
-
         if "shop" in place.tags:
             label = "寵物店 🐶"
             color = "green"
@@ -125,31 +125,22 @@ def index():
 
     if request.method == "POST":
         method = request.form.get("method")
-
         if method == "auto":
             lat = request.form.get("lat", type=float)
             lon = request.form.get("lon", type=float)
-
-            if lat is None or lon is None:
-                # 使用者未允許定位 → fallback 到 IP
-                lat, lon, address = get_location_by_ip()
-            else:
-                # 使用者允許裝置定位 → 使用 GPS + 反查地址
-                geolocator = Nominatim(user_agent="webmap")
-                location = geolocator.reverse((lat, lon), language="zh-TW", timeout=2)
-                address = location.address if location else "未知位置"
-
             if not lat or not lon:
                 error = "❌ 無法取得定位"
             else:
+                geolocator = Nominatim(user_agent="webmap")
+                location = geolocator.reverse((lat, lon), language="zh-TW", timeout=3)
+                address = location.address if location else "未知位置"
                 places = find_places(lat, lon)
                 categorized = categorize_places(places, lat, lon)
                 map_html = generate_map(lat, lon, places, address)
-
         elif method == "manual":
             address_input = request.form.get("address")
             geolocator = Nominatim(user_agent="webmap")
-            location = geolocator.geocode(address_input, timeout=2)
+            location = geolocator.geocode(address_input, timeout=3)
             if not location:
                 error = "❌ 找不到該地址"
             else:
